@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yoda AI 2026</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0b0e11; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .chat-container { width: 100%; max-width: 600px; background: #151921; border-radius: 15px; padding: 20px; border: 1px solid #2d333b; }
+        #output { height: 350px; overflow-y: auto; background: #0b0e11; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #2d333b; }
+        .input-area { display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #2d333b; color: white; }
+        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-enviar { background: #00ff88; color: #0b0e11; }
+        .btn-pdf { background: #00a2ff; margin-top: 10px; width: 100%; color: white; }
+        .btn-limpar { background: #ff4444; margin-top: 10px; width: 100%; color: white; }
+        pre { background: #2d333b; padding: 10px; border-radius: 5px; overflow-x: auto; } /* Estilo para código */
+    </style>
+</head>
+<body>
+    <h1>✨ Mestre Yoda AI - Sprint 0</h1>
+    <div class="chat-container">
+        <div id="output">Mestre Yoda aguardando, ele está...</div>
+        <div class="input-area">
+            <input type="text" id="pergunta" placeholder="Pergunte algo...">
+            <button class="btn-enviar" onclick="enviar()">ENVIAR</button>
+        </div>
+        <button class="btn-limpar" onclick="limparChat()">🗑️ LIMPAR CONVERSA</button>
+        <button class="btn-pdf" onclick="baixarPDF()">📄 BAIXAR RESPOSTA EM PDF</button>
+    </div>
+
+    <script>
+        let ultimaResposta = "";
+
+        async function enviar() {
+            const pergunta = document.getElementById('pergunta').value;
+            const output = document.getElementById('output');
+            if (!pergunta) return;
+
+            output.innerHTML += `<p style="color:#888"><b>Você:</b> ${pergunta}</p>`;
+            
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: pergunta })
+                });
+                const data = await res.json();
+                
+                ultimaResposta = data.text;
+                // UPGRADE: Renderiza Markdown
+                const htmlFormatado = marked.parse(ultimaResposta);
+                output.innerHTML += `<div style="color:#00ff88"><b>Yoda:</b> ${htmlFormatado}</div>`;
+                output.scrollTop = output.scrollHeight;
+                document.getElementById('pergunta').value = "";
+            } catch (err) {
+                output.innerHTML += `<p style="color:red">Erro na conexão!</p>`;
+            }
+        }
+
+        async function limparChat() {
+            if(confirm("Limpar a memória, você deseja?")) {
+                await fetch('/api/chat/limpar', { method: 'DELETE' });
+                document.getElementById('output').innerHTML = "Memória limpa, eu tive.";
+                ultimaResposta = "";
+            }
+        }
+
+        function baixarPDF() {
+            if (!ultimaResposta) return alert("Nada para baixar!");
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Sabedoria do Yoda", 10, 10);
+            const text = doc.splitTextToSize(ultimaResposta, 180);
+            doc.text(text, 10, 20);
+            doc.save("yoda.pdf");
+        }
+    </script>
+</body>
+</html>
