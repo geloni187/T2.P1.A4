@@ -16,7 +16,12 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Conectado"))
     .catch(err => console.error("❌ Erro MongoDB:", err));
 
-app.use('/api/chat', chatRoutes);
+app.use('/api/chat', chatRoutes);// ... outros imports
+const authRoutes = require('./routes/authRoutes');
+
+// ...
+app.use('/api/auth', authRoutes); // Rota de login/registro
+app.use('/api/chat', chatRoutes); // Rota de chat (protegida pelo middleware)
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

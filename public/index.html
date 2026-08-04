@@ -3,68 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yoda AI 2026</title>
+    <title>Yoda AI - Cofre de Usuários</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
+        /* Estilos Gerais (Dark Theme) */
         body { font-family: 'Segoe UI', sans-serif; background: #0b0e11; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .hidden { display: none !important; }
+        
+        /* Container de Autenticação (Login/Cadastro) */
+        .auth-container { width: 100%; max-width: 400px; background: #151921; border-radius: 15px; padding: 30px; border: 1px solid #2d333b; margin-top: 50px; text-align: center; }
+        .auth-container h2 { color: #00ff88; margin-bottom: 20px; }
+        .auth-form { display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Container do Chat */
         .chat-container { width: 100%; max-width: 600px; background: #151921; border-radius: 15px; padding: 20px; border: 1px solid #2d333b; }
         #output { height: 350px; overflow-y: auto; background: #0b0e11; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #2d333b; }
-        .input-area { display: flex; gap: 10px; }
-        input { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #2d333b; color: white; }
-        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-enviar { background: #00ff88; color: #0b0e11; }
+        
+        /* Inputs e Botões */
+        input { padding: 12px; border-radius: 8px; border: 1px solid #2d333b; background: #0b0e11; color: white; outline: none; }
+        input:focus { border-color: #00ff88; }
+        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        
+        .btn-principal { background: #00ff88; color: #0b0e11; width: 100%; }
+        .btn-principal:hover { background: #00cc6e; }
+        .btn-toggle { background: transparent; color: #00a2ff; text-decoration: underline; font-size: 0.9em; margin-top: 10px; }
+        .btn-sair { background: #ff4444; color: white; padding: 5px 10px; font-size: 0.8em; }
         .btn-pdf { background: #00a2ff; margin-top: 10px; width: 100%; color: white; }
-        .btn-limpar { background: #ff4444; margin-top: 10px; width: 100%; color: white; }
-        pre { background: #2d333b; padding: 10px; border-radius: 5px; overflow-x: auto; } /* Estilo para código */
+        
+        .user-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #2d333b; padding-bottom: 10px; }
+        .input-area { display: flex; gap: 10px; }
+        #pergunta { flex: 1; }
     </style>
 </head>
 <body>
-    <h1>✨ Mestre Yoda AI - Sprint 0</h1>
-    <div class="chat-container">
+
+    <!-- 🔐 SEÇÃO DE AUTENTICAÇÃO -->
+    <div id="auth-section" class="auth-container">
+        <h2 id="auth-title">Login do Agente</h2>
+        <div class="auth-form">
+            <input type="text" id="nome" class="hidden" placeholder="Seu nome completo">
+            <input type="email" id="email" placeholder="Seu e-mail">
+            <input type="password" id="senha" placeholder="Sua senha">
+            <button class="btn-principal" id="btn-auth" onclick="autenticar()">Entrar</button>
+            <button class="btn-toggle" id="btn-toggle" onclick="alternarModo()">Não tem conta? Cadastre-se</button>
+        </div>
+    </div>
+
+    <!-- 🤖 SEÇÃO DO CHAT -->
+    <div id="chat-section" class="chat-container hidden">
+        <div class="user-info">
+            <span>Agente: <b id="display-nome" style="color: #00ff88;"></b></span>
+            <button class="btn-sair" onclick="sair()">SAIR</button>
+        </div>
         <div id="output">Mestre Yoda aguardando, ele está...</div>
         <div class="input-area">
-            <input type="text" id="pergunta" placeholder="Pergunte algo...">
-            <button class="btn-enviar" onclick="enviar()">ENVIAR</button>
+            <input type="text" id="pergunta" placeholder="Sua dúvida, diga...">
+            <button class="btn-principal" style="width: auto;" onclick="enviar()">ENVIAR</button>
         </div>
-        <button class="btn-limpar" onclick="limparChat()">🗑️ LIMPAR CONVERSA</button>
-        <button class="btn-pdf" onclick="baixarPDF()">📄 BAIXAR RESPOSTA EM PDF</button>
+        <button class="btn-pdf" onclick="baixarPDF()">📄 BAIXAR PDF</button>
     </div>
 
     <script>
+        let modoLogin = true;
         let ultimaResposta = "";
 
-        async function enviar() {
-            const pergunta = document.getElementById('pergunta').value;
-            const output = document.getElementById('output');
-            if (!pergunta) return;
+        // Verificação Inicial: Já está logado?
+        window.onload = () => {
+            const token = localStorage.getItem('token_saas');
+            const nome = localStorage.getItem('nome_usuario');
+            if (token) {
+                mostrarChat(nome);
+            }
+        };
 
-            output.innerHTML += `<p style="color:#888"><b>Você:</b> ${pergunta}</p>`;
+        function alternarModo() {
+            modoLogin = !modoLogin;
+            document.getElementById('auth-title').innerText = modoLogin ? "Login do Agente" : "Novo Cadastro";
+            document.getElementById('btn-auth').innerText = modoLogin ? "Entrar" : "Criar Minha Conta";
+            document.getElementById('btn-toggle').innerText = modoLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça Login";
+            document.getElementById('nome').classList.toggle('hidden', modoLogin);
+        }
+
+        async function autenticar() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const nome = document.getElementById('nome').value;
+
+            const endpoint = modoLogin ? '/api/auth/login' : '/api/auth/register';
+            const payload = modoLogin ? { email, senha } : { nome, email, senha };
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (modoLogin) {
+                        // Sucesso no Login: Salva o Token (O Crachá)
+                        localStorage.setItem('token_saas', data.token);
+                        localStorage.setItem('nome_usuario', data.nome);
+                        mostrarChat(data.nome);
+                    } else {
+                        alert("Cadastro realizado! Mestre Yoda te espera. Faça login.");
+                        alternarModo();
+                    }
+                } else {
+                    alert("Erro: " + data.msg);
+                }
+            } catch (err) {
+                alert("Erro ao conectar com o servidor.");
+            }
+        }
+
+        function mostrarChat(nome) {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('chat-section').classList.remove('hidden');
+            document.getElementById('display-nome').innerText = nome;
+        }
+
+        function sair() {
+            localStorage.removeItem('token_saas');
+            localStorage.removeItem('nome_usuario');
+            window.location.reload();
+        }
+
+        async function enviar() {
+            const prompt = document.getElementById('pergunta').value;
+            const output = document.getElementById('output');
+            const token = localStorage.getItem('token_saas');
+
+            if (!prompt) return;
+
+            output.innerHTML += `<p style="color:#888"><b>Você:</b> ${prompt}</p>`;
             
             try {
                 const res = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: pergunta })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // O SEGURANÇA VAI LER ISSO
+                    },
+                    body: JSON.stringify({ prompt })
                 });
+
+                if (res.status === 401) {
+                    alert("Sessão expirada. Logar novamente você deve!");
+                    sair();
+                    return;
+                }
+
                 const data = await res.json();
-                
                 ultimaResposta = data.text;
-                // UPGRADE: Renderiza Markdown
-                const htmlFormatado = marked.parse(ultimaResposta);
-                output.innerHTML += `<div style="color:#00ff88"><b>Yoda:</b> ${htmlFormatado}</div>`;
+                output.innerHTML += `<div style="color:#00ff88"><b>Yoda:</b> ${marked.parse(ultimaResposta)}</div>`;
                 output.scrollTop = output.scrollHeight;
                 document.getElementById('pergunta').value = "";
             } catch (err) {
                 output.innerHTML += `<p style="color:red">Erro na conexão!</p>`;
-            }
-        }
-
-        async function limparChat() {
-            if(confirm("Limpar a memória, você deseja?")) {
-                await fetch('/api/chat/limpar', { method: 'DELETE' });
-                document.getElementById('output').innerHTML = "Memória limpa, eu tive.";
-                ultimaResposta = "";
             }
         }
 
@@ -75,7 +174,7 @@
             doc.text("Sabedoria do Yoda", 10, 10);
             const text = doc.splitTextToSize(ultimaResposta, 180);
             doc.text(text, 10, 20);
-            doc.save("yoda.pdf");
+            doc.save("yoda_secret.pdf");
         }
     </script>
 </body>

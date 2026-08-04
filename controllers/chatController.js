@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 exports.enviarMensagem = async (req, res) => {
     try {
         const { prompt } = req.body;
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const instrucao = `Aja como o Mestre Yoda. Use Markdown para formatar a resposta. Responda à pergunta: ${prompt}`;
         const result = await model.generateContent(instrucao);
