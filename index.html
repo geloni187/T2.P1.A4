@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Comando - Analytics</title>
+    <!-- [REQ-007] Script oficial do Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0b0e11; color: white; display: flex; flex-direction: column; align-items: center; padding: 30px; }
+        .dashboard-container { width: 100%; max-width: 800px; background: #151921; border-radius: 15px; padding: 25px; border: 1px solid #2d333b; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        h1 { color: #00ff88; text-align: center; margin-bottom: 25px; }
+        .cards { display: flex; gap: 15px; margin-bottom: 30px; }
+        .card { flex: 1; background: #0b0e11; border: 1px solid #2d333b; border-radius: 10px; padding: 15px; text-align: center; }
+        .card h3 { margin: 0; color: #888; font-size: 0.9em; }
+        .card p { margin: 10px 0 0 0; font-size: 1.8em; font-weight: bold; color: #00a2ff; }
+        .grafico-wrapper { width: 100%; background: #0b0e11; padding: 20px; border-radius: 10px; border: 1px solid #2d333b; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <h1>📊 Centro de Comando (Analytics)</h1>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Total de Tokens</h3>
+                <p id="card-tokens">Carregando...</p>
+            </div>
+            <div class="card">
+                <h3>Total de Mensagens</h3>
+                <p id="card-mensagens">Carregando...</p>
+            </div>
+            <div class="card">
+                <h3>Usuários Cadastrados</h3>
+                <p id="card-usuarios">Carregando...</p>
+            </div>
+        </div>
+
+        <div class="grafico-wrapper">
+            <!-- [REQ-007] Elemento Canvas obrigatório com o ID exato -->
+            <canvas id="graficoTokens"></canvas>
+        </div>
+    </div>
+
+    <script>
+        async function carregarDashboard() {
+            // Pega o token que você salva no localStorage no index.html
+            const token = localStorage.getItem('token_saas');
+
+            if (!token) {
+                alert("Você precisa estar logado!");
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/analytics/tokens', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 403) {
+                    alert("Acesso Negado: Apenas administradores podem ver o Centro de Comando!");
+                    window.location.href = '/';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error("Erro ao carregar dados do servidor.");
+                }
+
+                const data = await response.json();
+
+                // Atualiza os Cards Numéricos
+                document.getElementById('card-tokens').innerText = data.totalTokens.toLocaleString();
+                document.getElementById('card-mensagens').innerText = data.totalMensagens;
+                document.getElementById('card-usuarios').innerText = data.totalUsuarios;
+
+                // Renderiza o Gráfico com Chart.js
+                const ctx = document.getElementById('graficoTokens').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Tokens Gastos', 'Mensagens Processadas'],
+                        datasets: [{
+                            label: 'Volume Operacional',
+                            data: [data.totalTokens, data.totalMensagens],
+                            backgroundColor: [
+                                'rgba(0, 255, 136, 0.6)',
+                                'rgba(0, 162, 255, 0.6)'
+                            ],
+                            borderColor: [
+                                '#00ff88',
+                                '#00a2ff'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { labels: { color: '#fff' } }
+                        },
+                        scales: {
+                            y: { ticks: { color: '#888' }, grid: { color: '#2d333b' } },
+                            x: { ticks: { color: '#888' }, grid: { color: '#2d333b' } }
+                        }
+                    }
+                });
+
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao conectar com a API de Analytics.");
+            }
+        }
+
+        carregarDashboard();
+    </script>
+</body>
+</html>
